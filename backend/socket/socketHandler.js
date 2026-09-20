@@ -137,14 +137,22 @@ const registerSocketHandlers = (io, socket) => {
    */
   socket.on('messageRead', async (data) => {
     try {
-      const { messageId, senderId } = data || {};
+      const { messageId, senderId: customSenderId } = data || {};
+      let senderId = customSenderId;
       const readerId = socket.userId || data?.readerId;
 
       if (messageId) {
-        await Message.findByIdAndUpdate(messageId, {
-          read: true,
-          readAt: new Date(),
-        });
+        const updatedMsg = await Message.findByIdAndUpdate(
+          messageId,
+          {
+            read: true,
+            readAt: new Date(),
+          },
+          { new: true }
+        );
+        if (!senderId && updatedMsg?.sender) {
+          senderId = updatedMsg.sender.toString();
+        }
       } else if (senderId && readerId) {
         await Message.updateMany(
           { sender: senderId, receiver: readerId, read: false },
